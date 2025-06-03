@@ -51,7 +51,7 @@ Before you begin, ensure you have the following installed:
 5.  **Install dependencies using `uv`:**
     This command installs the dependencies specified in the `pyproject.toml` file.
     ```bash
-    uv pip install .
+    uv sync
     ```
 
 6.  **Create a `.env` file:**

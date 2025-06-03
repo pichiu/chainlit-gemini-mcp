@@ -50,18 +50,18 @@ async def show_linear_ticket(title, status, assignee, deadline, tags):
 def flatten(xss):
     return [x for xs in xss for x in xs]
 
-@cl.on_mcp_connect
-async def on_mcp(connection, session: ClientSession):
-    result = await session.list_tools()
-    tools = [{
-        "name": t.name,
-        "description": t.description,
-        "input_schema": t.inputSchema,
-        } for t in result.tools]
-
-    mcp_tools = cl.user_session.get("mcp_tools", {})
-    mcp_tools[connection.name] = tools
-    cl.user_session.set("mcp_tools", mcp_tools)
+# @cl.on_mcp_connect
+# async def on_mcp(connection, session: ClientSession):
+#     result = await session.list_tools()
+#     tools = [{
+#         "name": t.name,
+#         "description": t.description,
+#         "input_schema": t.inputSchema,
+#         } for t in result.tools]
+#
+#     mcp_tools = cl.user_session.get("mcp_tools", {})
+#     mcp_tools[connection.name] = tools
+#     cl.user_session.set("mcp_tools", mcp_tools)
 
 
 @cl.step(type="tool")

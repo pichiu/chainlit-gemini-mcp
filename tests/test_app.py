@@ -7,14 +7,14 @@ from unittest.mock import MagicMock, AsyncMock, patch
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from app import flatten, show_linear_ticket, on_chat_start, regular_tools as app_regular_tools # Import regular_tools
+from app import flatten, show_linear_ticket, start_chat, regular_tools as app_regular_tools # Import regular_tools
 
 def test_flatten():
     assert flatten([[1, 2], [3, 4], [5]]) == [1, 2, 3, 4, 5]
     assert flatten([]) == []
     assert flatten([[], [1], [], [2, 3]]) == [1, 2, 3]
 
-@pytest.mark.asyncio
+@pytest.mark.anyio
 async def test_show_linear_ticket_props():
     # Mock Chainlit elements and cl.Message
     MockCustomElement = MagicMock()
@@ -44,13 +44,13 @@ async def test_show_linear_ticket_props():
             assert "the ticket was displayed to the user" in result
             assert str(expected_props) in result
 
-@pytest.mark.asyncio
-async def test_on_chat_start():
+@pytest.mark.anyio
+async def test_start_chat():
     mock_user_session_instance = MagicMock()
 
     # Patch cl.user_session to return our mock instance
     with patch('app.cl.user_session', mock_user_session_instance):
-        await on_chat_start()
+        await start_chat()
 
         # Check calls to cl.user_session.set()
         calls = mock_user_session_instance.set.call_args_list

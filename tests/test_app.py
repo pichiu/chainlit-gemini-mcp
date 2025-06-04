@@ -3,7 +3,6 @@ import types
 import importlib
 import json
 import asyncio
-import builtins
 import pytest
 
 # Fixture to create stub modules and import app

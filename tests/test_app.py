@@ -119,3 +119,41 @@ def test_call_gemini(app_module):
     assert captured['model'] == app.MODEL_NAME
     assert captured['contents'][0].role == 'user'
     assert captured['contents'][0].parts[0].text == 'hi'
+
+
+def test_call_gemini_schema_normalization(app_module):
+    app, cl = app_module
+    schema = {
+        'type': 'object',
+        'properties': {
+            'numbers': {
+                'type': 'array',
+                'max_items': 3,
+            }
+        },
+        'additional_properties': False,
+    }
+    cl.user_session.set('mcp_tools', {
+        'c1': [{
+            'name': 'foo',
+            'description': 'd',
+            'input_schema': schema,
+        }]
+    })
+    cl.user_session.set('regular_tools', [])
+
+    captured = {}
+
+    async def fake_generate_content(model, contents, config):
+        captured['declarations'] = config.tools[0].function_declarations
+        return types.SimpleNamespace(candidates=[
+            types.SimpleNamespace(content=types.SimpleNamespace(parts=[types.SimpleNamespace(text='ok')]))
+        ])
+
+    app.client.aio.models.generate_content = fake_generate_content
+
+    asyncio.run(app.call_gemini([]))
+    params = captured['declarations'][0].parameters
+    assert 'additionalProperties' in params
+    assert 'additional_properties' not in params
+    assert params['properties']['numbers']['maxItems'] == 3

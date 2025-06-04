@@ -22,6 +22,24 @@ def flatten(xss):
     return [x for xs in xss for x in xs]
 
 
+def _snake_to_camel(name: str) -> str:
+    """Convert snake_case names to camelCase."""
+    parts = name.split("_")
+    return parts[0] + "".join(p.title() for p in parts[1:]) if len(parts) > 1 else name
+
+
+def normalize_schema(value):
+    """Recursively convert snake_case keys to camelCase in a JSON schema."""
+    if isinstance(value, dict):
+        return {
+            _snake_to_camel(k): normalize_schema(v)
+            for k, v in value.items()
+        }
+    if isinstance(value, list):
+        return [normalize_schema(v) for v in value]
+    return value
+
+
 @cl.on_mcp_connect
 async def on_mcp(connection, session: ClientSession):
     result = await session.list_tools()
@@ -86,7 +104,7 @@ async def call_gemini(chat_messages):
         genai.types.FunctionDeclaration(
             name=t["name"],
             description=t["description"],
-            parameters=t["input_schema"],
+            parameters=normalize_schema(t["input_schema"]),
         )
         for t in all_tools
     ]

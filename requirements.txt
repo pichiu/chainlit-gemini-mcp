@@ -1,0 +1,4 @@
+chainlit
+mcp
+google-generativeai
+python-dotenv

@@ -1,6 +1,5 @@
 import json
 import os
-import asyncio
 from dotenv import load_dotenv
 
 from mcp import ClientSession
@@ -13,47 +12,10 @@ load_dotenv()
 api_key = os.getenv("GOOGLE_API_KEY")
 client = genai.Client(api_key=api_key) if api_key else genai.Client()
 
-SYSTEM = (
-    "You are a helpful assistant. You are a member of a team that uses "
-    "Linear to manage their projects. Once you've diplayed a ticket, do "
-    "not mention it again in your response - JUST SAY `here is the ticket information!`"
-)
+SYSTEM = "You are a helpful assistant."
 
-regular_tools = [
-    {
-        "name": "show_linear_ticket",
-        "description": (
-            "Displays a Linear ticket in the UI with its details. Use this tool after "
-            "retrieving ticket information to show a visual representation of the ticket. "
-            "The tool will create a card showing the ticket title, status, assignee, "
-            "deadline, and tags. This provides a cleaner presentation than text-only responses."
-        ),
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "title": {"type": "string"},
-                "status": {"type": "string"},
-                "assignee": {"type": "string"},
-                "deadline": {"type": "string"},
-                "tags": {"type": "array", "items": {"type": "string"}},
-            },
-            "required": ["title", "status", "assignee", "deadline", "tags"],
-        },
-    }
-]
-
-# Helper to display a Linear ticket using Chainlit custom element
-async def show_linear_ticket(title, status, assignee, deadline, tags):
-    props = {
-        "title": title,
-        "status": status,
-        "assignee": assignee,
-        "deadline": deadline,
-        "tags": tags,
-    }
-    ticket_element = cl.CustomElement(name="LinearTicket", props=props)
-    await cl.Message(content="", elements=[ticket_element], author="show_linear_ticket").send()
-    return "the ticket was displayed to the user: " + str(props)
+# No builtin tools
+regular_tools = []
 
 
 def flatten(xss):
@@ -146,8 +108,7 @@ async def call_gemini(chat_messages):
         system_instruction=SYSTEM, tools=[tool_config] if tool_config else None
     )
 
-    response = await asyncio.to_thread(
-        client.models.generate_content,
+    response = await client.aio.models.generate_content(
         model=MODEL_NAME,
         contents=contents,
         config=config,

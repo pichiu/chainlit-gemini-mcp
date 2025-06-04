@@ -1,13 +1,15 @@
 # Chainlit Gemini MCP Example
 
-This repository demonstrates how to run a Chainlit application powered by Google's Gemini model and connected to an MCP server.
+This repository demonstrates how to run a Chainlit application powered by Google
+Gemini and connected to an MCP server.
 
 ## Setup
 
-1. Install dependencies using [uv](https://github.com/astral-sh/uv):
+1. Install dependencies with [uv](https://github.com/astral-sh/uv) using the
+   provided `pyproject.toml` and `uv.lock`:
 
 ```bash
-uv pip install -r requirements.txt
+uv sync
 ```
 
 2. Start the MCP server for Google Sheets:
@@ -28,4 +30,5 @@ export GOOGLE_API_KEY=your_key
 chainlit run app.py -w
 ```
 
-The app uses the `gemini-2.5-flash-preview-05-20` model and shows how tool calls can be handled through MCP.
+The app uses the `gemini-2.5-flash-preview-05-20` model and shows how tool calls
+can be handled through MCP.

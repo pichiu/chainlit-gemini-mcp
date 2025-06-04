@@ -1,17 +1,17 @@
 import json
 import os
+import asyncio
 from dotenv import load_dotenv
 
 from mcp import ClientSession
-import google.generativeai as genai
+import google.genai as genai
 import chainlit as cl
 
 load_dotenv()
 
-# Configure Gemini
+# Configure Gemini client
 api_key = os.getenv("GOOGLE_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
+client = genai.Client(api_key=api_key) if api_key else genai.Client()
 
 SYSTEM = (
     "You are a helpful assistant. You are a member of a team that uses "
@@ -110,16 +110,51 @@ async def call_tool(tool_use):
     return current_step.output
 
 
-# Initialize Gemini model
-model = genai.AsyncGenerativeModel(model_name="gemini-2.5-flash-preview-05-20")
+# Target model name
+MODEL_NAME = "gemini-2.5-flash-preview-05-20"
 
 
 async def call_gemini(chat_messages):
     mcp_tools = cl.user_session.get("mcp_tools", {})
     regular = cl.user_session.get("regular_tools", [])
-    tools = flatten([tools for _, tools in mcp_tools.items()]) + regular
-    response = await model.generate_content(chat_messages, system_instruction=SYSTEM, tools=tools)
-    return response.text
+
+    # Convert tools to FunctionDeclarations understood by google-genai
+    all_tools = flatten([tools for _, tools in mcp_tools.items()]) + regular
+    declarations = [
+        genai.types.FunctionDeclaration(
+            name=t["name"],
+            description=t["description"],
+            parameters=t["input_schema"],
+        )
+        for t in all_tools
+    ]
+    tool_config = (
+        genai.types.Tool(function_declarations=declarations)
+        if declarations
+        else None
+    )
+
+    contents = [
+        genai.types.Content(
+            role=m["role"],
+            parts=[genai.types.Part(text=p) for p in m.get("parts", [])],
+        )
+        for m in chat_messages
+    ]
+
+    config = genai.types.GenerateContentConfig(
+        system_instruction=SYSTEM, tools=[tool_config] if tool_config else None
+    )
+
+    response = await asyncio.to_thread(
+        client.models.generate_content,
+        model=MODEL_NAME,
+        contents=contents,
+        config=config,
+    )
+
+    candidate = response.candidates[0]
+    return "".join(part.text or "" for part in candidate.content.parts)
 
 
 @cl.on_chat_start

@@ -1,5 +1,10 @@
 from __future__ import annotations
+import os
+import logging
 import chainlit as cl
+
+logging.basicConfig(level=os.getenv("LOGLEVEL", "INFO").upper())
+logger = logging.getLogger(__name__)
 
 from google.genai import types
 
@@ -17,6 +22,7 @@ client = get_client()
 
 async def get_current_weather(location: str) -> str:
     """Delegate a weather query to an MCP tool."""
+    logger.info("get_current_weather called with location=%s", location)
     mcp_tools = cl.user_session.get("mcp_tools", {})
     mcp_sessions = {
         name: session

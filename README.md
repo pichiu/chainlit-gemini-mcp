@@ -26,3 +26,13 @@ chainlit run src/chainlit_gemini_mcp/app.py
 
 Make sure to set the `GOOGLE_API_KEY` environment variable so that the
 Gemini client can authenticate.
+
+## Logging
+
+The application uses Python's `logging` module. Set the `LOGLEVEL`
+environment variable to `DEBUG` to see verbose output when starting the
+app:
+
+```bash
+LOGLEVEL=DEBUG chainlit run src/chainlit_gemini_mcp/app.py
+```

@@ -1,0 +1,9 @@
+[project]
+name = "chainlit-gemini-mcp"
+version = "0.1.0"
+dependencies = [
+    "chainlit",
+    "mcp",
+    "google-genai",
+    "python-dotenv"
+]

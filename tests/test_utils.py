@@ -37,6 +37,18 @@ def test_call_mcp_tool():
     assert session.called == ("get_current_weather", {"location": "paris"})
 
 
+def test_call_mcp_tool_missing():
+    with pytest.raises(ValueError):
+        asyncio.run(
+            call_mcp_tool(
+                "get_current_weather",
+                {"location": "lyon"},
+                {},
+                {},
+            )
+        )
+
+
 def test_find_mcp_for_tool():
     tools = {"c1": [{"name": "foo"}], "c2": [{"name": "bar"}]}
     assert find_mcp_for_tool("bar", tools) == "c2"

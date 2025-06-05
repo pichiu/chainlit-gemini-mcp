@@ -56,4 +56,5 @@ async def on_message(message: cl.Message):
         contents=message.content,
         config=types.GenerateContentConfig(tools=[get_current_weather]),
     )
+    logger.debug("Model response text: %s", response.text)
     await cl.Message(content=response.text).send()

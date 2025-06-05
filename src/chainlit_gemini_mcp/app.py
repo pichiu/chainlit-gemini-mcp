@@ -51,9 +51,35 @@ async def on_mcp_disconnect(name, session):
 
 @cl.on_message
 async def on_message(message: cl.Message):
+    logger.debug("Request contents: %s", message.content)
+
+    # Build tool functions for all MCP connections
+    mcp_tools = cl.user_session.get("mcp_tools", {})
+
+    def make_tool(tool):
+        async def _tool(**kwargs):
+            logger.info("%s called with %s", tool["name"], kwargs)
+            sessions = {
+                name: session
+                for name, (session, _) in getattr(
+                    cl.context.session, "mcp_sessions", {}
+                ).items()
+            }
+            result = await call_mcp_tool(tool["name"], kwargs, mcp_tools, sessions)
+            return str(result)
+
+        _tool.__name__ = tool["name"]
+        _tool.__doc__ = tool.get("description", "")
+        return _tool
+
+    tools = [make_tool(t) for tools in mcp_tools.values() for t in tools]
+    if not tools:
+        tools = [get_current_weather]
+
     response = await client.aio.models.generate_content(
         model=MODEL_NAME,
         contents=message.content,
-        config=types.GenerateContentConfig(tools=[get_current_weather]),
+        config=types.GenerateContentConfig(tools=tools),
     )
+    logger.debug("Gemini response: %s", response)
     await cl.Message(content=response.text).send()

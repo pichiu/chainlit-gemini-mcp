@@ -204,3 +204,52 @@ def test_call_gemini_tool_flow(app_module):
     followup_last = captured['requests'][1][-1]
     assert followup_last.role == 'function'
     assert followup_last.parts[0].function_response['name'] == 'foo'
+
+
+@pytest.mark.parametrize("schema_input", ["pydantic", "json"])
+def test_call_gemini_schema_normalization_variants(app_module, schema_input):
+    app, cl = app_module
+    base_schema = {
+        'type': 'object',
+        'properties': {
+            'numbers': {
+                'type': 'array',
+                'max_items': 3,
+            }
+        },
+        'additional_properties': False,
+    }
+
+    if schema_input == "pydantic":
+        class DummyModel:
+            def model_dump(self):
+                return base_schema
+
+        input_schema = DummyModel()
+    else:
+        input_schema = json.dumps(base_schema)
+
+    cl.user_session.set('mcp_tools', {
+        'c1': [{
+            'name': 'foo',
+            'description': 'd',
+            'input_schema': input_schema,
+        }]
+    })
+    cl.user_session.set('regular_tools', [])
+
+    captured = {}
+
+    async def fake_generate_content(model, contents, config):
+        captured['params'] = config.tools[0].function_declarations[0].parameters
+        return types.SimpleNamespace(candidates=[
+            types.SimpleNamespace(content=types.SimpleNamespace(parts=[types.SimpleNamespace(text='ok')]))
+        ])
+
+    app.client.aio.models.generate_content = fake_generate_content
+
+    asyncio.run(app.call_gemini([]))
+    params = captured['params']
+    assert 'additionalProperties' in params
+    assert 'additional_properties' not in params
+    assert params['properties']['numbers']['maxItems'] == 3

@@ -16,7 +16,7 @@ from chainlit_gemini_mcp.mcp_utils import (
 )
 
 
-MODEL_NAME = "gemini-2.0-pro"  # default model
+MODEL_NAME = "gemini-2.5-flash-preview-05-20"  # default model
 client = get_client()
 
 

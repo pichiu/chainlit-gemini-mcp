@@ -3,8 +3,12 @@ import chainlit as cl
 
 from google.genai import types
 
-from .gemini_client import get_client
-from .mcp_utils import call_mcp_tool, store_tools, remove_tools
+from chainlit_gemini_mcp.gemini_client import get_client
+from chainlit_gemini_mcp.mcp_utils import (
+    call_mcp_tool,
+    store_tools,
+    remove_tools,
+)
 
 
 MODEL_NAME = "gemini-2.0-pro"  # default model

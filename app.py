@@ -31,6 +31,19 @@ def _snake_to_camel(name: str) -> str:
 
 def normalize_schema(value):
     """Recursively convert snake_case keys to camelCase in a JSON schema."""
+    # Support Pydantic objects which implement ``model_dump`` or ``dict``
+    if hasattr(value, "model_dump") and callable(getattr(value, "model_dump")):
+        value = value.model_dump()
+    elif hasattr(value, "dict") and callable(getattr(value, "dict")):
+        value = value.dict()
+
+    # If value is a JSON string, try to parse it
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except Exception:
+            return value
+
     if isinstance(value, dict):
         return {
             _snake_to_camel(k): normalize_schema(v)

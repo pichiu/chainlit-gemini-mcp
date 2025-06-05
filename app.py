@@ -1,5 +1,6 @@
 import json
 import os
+import types
 from dotenv import load_dotenv
 
 from mcp import ClientSession
@@ -133,7 +134,44 @@ async def call_gemini(chat_messages):
     )
 
     candidate = response.candidates[0]
-    return "".join(part.text or "" for part in candidate.content.parts)
+
+    function_calls = [
+        part.function_call
+        for part in getattr(candidate.content, "parts", [])
+        if getattr(part, "function_call", None)
+    ]
+
+    if not function_calls:
+        return "".join(part.text or "" for part in candidate.content.parts)
+
+    response_parts = []
+    for call in function_calls:
+        args = call.args
+        if isinstance(args, str):
+            try:
+                args = json.loads(args)
+            except Exception:
+                args = {}
+        tool_output = await call_tool(types.SimpleNamespace(name=call.name, input=args))
+        response_parts.append(
+            genai.types.Part.from_function_response(
+                name=call.name, response={"content": tool_output}
+            )
+        )
+
+    followup_contents = contents + [
+        candidate.content,
+        genai.types.Content(role="function", parts=response_parts),
+    ]
+
+    followup = await client.aio.models.generate_content(
+        model=MODEL_NAME,
+        contents=followup_contents,
+        config=config,
+    )
+
+    final_candidate = followup.candidates[0]
+    return "".join(part.text or "" for part in final_candidate.content.parts)
 
 
 @cl.on_chat_start

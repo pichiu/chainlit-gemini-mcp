@@ -51,11 +51,20 @@ def app_module(monkeypatch):
             self.aio = types.SimpleNamespace(models=types.SimpleNamespace(generate_content=None))
     genai_stub.Client = DummyClient
 
+    class DummyPart(types.SimpleNamespace):
+        @classmethod
+        def from_function_response(cls, *, name, response):
+            return cls(function_response={'name': name, 'response': response})
+
+        @classmethod
+        def from_function_call(cls, *, name, args):
+            return cls(function_call=types.SimpleNamespace(name=name, args=args))
+
     genai_stub.types = types.SimpleNamespace(
         FunctionDeclaration=lambda **kw: types.SimpleNamespace(**kw),
         Tool=lambda **kw: types.SimpleNamespace(**kw),
         Content=lambda **kw: types.SimpleNamespace(**kw),
-        Part=lambda **kw: types.SimpleNamespace(**kw),
+        Part=DummyPart,
         GenerateContentConfig=lambda **kw: types.SimpleNamespace(**kw)
     )
 
@@ -157,3 +166,41 @@ def test_call_gemini_schema_normalization(app_module):
     assert 'additionalProperties' in params
     assert 'additional_properties' not in params
     assert params['properties']['numbers']['maxItems'] == 3
+
+
+def test_call_gemini_tool_flow(app_module):
+    app, cl = app_module
+    cl.user_session.set('mcp_tools', {
+        'c1': [{'name': 'foo', 'description': '', 'input_schema': {}}]
+    })
+    cl.user_session.set('regular_tools', [])
+
+    async def fake_call_tool(tool_use):
+        assert tool_use.name == 'foo'
+        assert tool_use.input == {'a': 1}
+        return '{"ok": true}'
+
+    app.call_tool = fake_call_tool
+
+    captured = {'requests': []}
+
+    async def fake_generate_content(model, contents, config):
+        captured['requests'].append(contents)
+        if len(captured['requests']) == 1:
+            part = app.genai.types.Part.from_function_call(name='foo', args={'a': 1})
+            return types.SimpleNamespace(candidates=[
+                types.SimpleNamespace(content=types.SimpleNamespace(parts=[part]))
+            ])
+        else:
+            return types.SimpleNamespace(candidates=[
+                types.SimpleNamespace(content=types.SimpleNamespace(parts=[types.SimpleNamespace(text='done')]))
+            ])
+
+    app.client.aio.models.generate_content = fake_generate_content
+
+    result = asyncio.run(app.call_gemini([{'role': 'user', 'parts': ['hi']}]))
+    assert result == 'done'
+    assert len(captured['requests']) == 2
+    followup_last = captured['requests'][1][-1]
+    assert followup_last.role == 'function'
+    assert followup_last.parts[0].function_response['name'] == 'foo'
